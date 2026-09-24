@@ -1,12 +1,12 @@
-import asyncio
+import unittest
 
 from builder import BuilderAgente
 from memoria_compartida import MemoriaCompartida
 from optimizer import OptimizerAgente
 
 
-def test_builder_and_optimizer_store_experiences():
-    async def run_flow():
+class BuilderOptimizerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_builder_and_optimizer_store_experiences(self):
         memoria = MemoriaCompartida()
         builder = BuilderAgente(None, memoria)
         optimizer = OptimizerAgente(None, memoria)
@@ -22,13 +22,7 @@ def test_builder_and_optimizer_store_experiences():
             api["id"], [{"nivel": "error", "latencia_ms": 1200}]
         )
 
-        assert api["estado"] == "construida"
-        assert result["errores_corregidos"] == 1
-        assert result["mejoras_aplicadas"] == 1
-        assert len(memoria.experiencias) == 2
-
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(run_flow())
-    finally:
-        loop.close()
+        self.assertEqual(api["estado"], "construida")
+        self.assertEqual(result["errores_corregidos"], 1)
+        self.assertEqual(result["mejoras_aplicadas"], 1)
+        self.assertEqual(len(memoria.experiencias), 2)
