@@ -1,30 +1,83 @@
 version: '3.8'
 
 services:
-  kimi-os:
+  api:
     build: .
+    command: uvicorn mvp_api.main:app --host 0.0.0.0 --port 8000
     ports:
-      - "5000:5000"
+      - "8000:8000"
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - DATABASE_URL=${DATABASE_URL}
-    volumes:
-      - ./data:/app/data
+      - DATABASE_URL=postgresql+psycopg2://kimi:${DB_PASSWORD:-kimi_password}@postgres:5432/kimi_os
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-120}
+      - DEFAULT_DAILY_QUOTA=${DEFAULT_DAILY_QUOTA:-5000}
+      - PRIMARY_TIMEOUT_MS=${PRIMARY_TIMEOUT_MS:-800}
+      - PRIMARY_LATENCY_MS=${PRIMARY_LATENCY_MS:-120}
+      - BACKUP_LATENCY_MS=${BACKUP_LATENCY_MS:-220}
+      - FORCE_PRIMARY_FAILURE=${FORCE_PRIMARY_FAILURE:-false}
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: celery -A mvp_api.tasks.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://kimi:${DB_PASSWORD:-kimi_password}@postgres:5432/kimi_os
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - PRIMARY_TIMEOUT_MS=${PRIMARY_TIMEOUT_MS:-800}
+      - PRIMARY_LATENCY_MS=${PRIMARY_LATENCY_MS:-120}
+      - BACKUP_LATENCY_MS=${BACKUP_LATENCY_MS:-220}
+      - FORCE_PRIMARY_FAILURE=${FORCE_PRIMARY_FAILURE:-false}
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  flower:
+    build: .
+    command: celery -A mvp_api.tasks.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    depends_on:
+      - redis
+      - worker
     restart: unless-stopped
 
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     restart: unless-stopped
 
   postgres:
     image: postgres:15-alpine
     environment:
       - POSTGRES_USER=kimi
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-kimi_password}
       - POSTGRES_DB=kimi_os
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:

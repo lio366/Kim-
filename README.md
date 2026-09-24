@@ -158,3 +158,28 @@ MIT License — La IA es libre. Tú eres libre.
 **"No construyas una app. Construye un sistema operativo donde las IAs construyan apps."**
 
 — KIMI OS
+
+---
+
+## 🧪 MVP técnico end-to-end (FastAPI + Celery + Redis + PostgreSQL)
+
+Este repositorio ahora incluye un MVP operativo con:
+- API en **FastAPI** (`/health`, `/v1/auth/token`, `/v1/process`, `/v1/process/async`, `/v1/tasks/{task_id}`)
+- **JWT** + aislamiento **multi-tenant** por `org_id`
+- **Rate limit y cuotas** por organización en Redis
+- **Self-Healing** con conmutación automática a proveedor de respaldo
+- Auditoría de ejecuciones en PostgreSQL (`audit_events`)
+- Métricas para **Prometheus** en `/metrics`
+- Supervisión de workers con **Flower** en `http://localhost:5555`
+
+### Arranque
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+```
+
+### Carga con Locust
+
+```bash
+locust -f tests/locustfile.py --headless -u 500 -r 50 --run-time 2m --host http://localhost:8000
+```

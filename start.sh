@@ -15,4 +15,4 @@ echo "✅ Variables de entorno verificadas"
 echo "🧠 Iniciando núcleo..."
 
 # Iniciar aplicación
-python dashboard/app.py
+uvicorn mvp_api.main:app --host 0.0.0.0 --port 8000
