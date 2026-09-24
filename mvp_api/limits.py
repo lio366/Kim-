@@ -13,9 +13,9 @@ def _current_day_key() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d")
 
 
-def enforce_limits(org_id: str, daily_quota: int) -> None:
-    minute_key = f"rl:{org_id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
-    daily_key = f"quota:{org_id}:{_current_day_key()}"
+def enforce_limits(org_id: str, daily_quota: int, scope: str = "api") -> None:
+    minute_key = f"rl:{scope}:{org_id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
+    daily_key = f"quota:{scope}:{org_id}:{_current_day_key()}"
 
     minute_value = redis_client.incr(minute_key)
     if minute_value == 1:

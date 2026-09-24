@@ -1,6 +1,4 @@
-import json
-import time
-from typing import Dict
+from typing import Dict, Optional
 
 from celery.result import AsyncResult
 from fastapi import Depends, FastAPI, HTTPException
@@ -9,29 +7,36 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from sqlalchemy.orm import Session
 from starlette.responses import Response
 
+from mvp_api.agents.self_healing import SelfHealingRouter
+from mvp_api.algorithms.cognitive_loop import CognitiveLoop
 from mvp_api.auth import create_token, get_claims
 from mvp_api.config import settings
 from mvp_api.db import Base, engine, get_db
-from mvp_api.limits import enforce_limits
-from mvp_api.models import AuditEvent
-from mvp_api.providers import ProviderError, execute_with_failover
-from mvp_api.tasks import celery_app, process_payload
+from mvp_api.core.metrics import HUMAN_INTERVENTIONS
+from mvp_api.providers import PROVIDERS, ProviderError
+from mvp_api.tasks import celery_app, process_payload, set_cognitive_loop
 
 app = FastAPI(title="KIMI MVP API", version="0.1.0")
 
 REQUEST_COUNT = Counter("kimi_requests_total", "Total HTTP requests", ["endpoint", "org_id", "status"])
 REQUEST_LATENCY = Histogram("kimi_request_latency_seconds", "HTTP latency", ["endpoint"])
 FALLBACK_COUNT = Counter("kimi_failover_total", "Failovers to backup provider", ["endpoint", "org_id"])
+cognitive_loop = CognitiveLoop(SelfHealingRouter(PROVIDERS))
+set_cognitive_loop(cognitive_loop)
 
 
 class TokenRequest(BaseModel):
     org_id: str = Field(min_length=1, max_length=100)
-    daily_quota: int | None = Field(default=None, ge=1)
+    daily_quota: Optional[int] = Field(default=None, ge=1)
 
 
 class ProcessRequest(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
     force_primary_failure: bool = False
+
+
+class InterventionRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=120)
 
 
 @app.on_event("startup")
@@ -63,36 +68,27 @@ def process_sync(
 ) -> Dict:
     org_id = claims["org_id"]
     daily_quota = int(claims.get("daily_quota", settings.default_daily_quota))
-    enforce_limits(org_id, daily_quota)
-
-    start = time.perf_counter()
-    try:
-        result = execute_with_failover(req.model_dump())
-        status_code = 200
-    except ProviderError as exc:
-        status_code = 500
-        REQUEST_COUNT.labels("/v1/process", org_id, str(status_code)).inc()
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    finally:
-        elapsed = time.perf_counter() - start
-        REQUEST_LATENCY.labels("/v1/process").observe(elapsed)
+    with REQUEST_LATENCY.labels("/v1/process").time():
+        try:
+            result = cognitive_loop.run(
+                org_id=org_id,
+                payload=req.model_dump(),
+                daily_quota=daily_quota,
+                scope="sync",
+                db=db,
+            )
+            status_code = 200
+        except ProviderError as exc:
+            status_code = 500
+            REQUEST_COUNT.labels("/v1/process", org_id, str(status_code)).inc()
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except HTTPException as exc:
+            status_code = exc.status_code
+            REQUEST_COUNT.labels("/v1/process", org_id, str(status_code)).inc()
+            raise
 
     if result["used_fallback"]:
         FALLBACK_COUNT.labels("/v1/process", org_id).inc()
-
-    db.add(
-        AuditEvent(
-            org_id=org_id,
-            endpoint="/v1/process",
-            status_code=status_code,
-            provider_used=result["provider"],
-            used_fallback=result["used_fallback"],
-            latency_ms=result["latency_ms"],
-            detail=json.dumps({"text_size": len(req.text)}),
-        )
-    )
-    db.commit()
-
     REQUEST_COUNT.labels("/v1/process", org_id, str(status_code)).inc()
     return {"org_id": org_id, **result}
 
@@ -101,11 +97,16 @@ def process_sync(
 def process_async(req: ProcessRequest, claims: Dict = Depends(get_claims)) -> Dict[str, str]:
     org_id = claims["org_id"]
     daily_quota = int(claims.get("daily_quota", settings.default_daily_quota))
-    enforce_limits(org_id, daily_quota)
-
-    task = process_payload.delay(org_id, req.model_dump())
+    task = process_payload.delay(org_id, daily_quota, req.model_dump())
     REQUEST_COUNT.labels("/v1/process/async", org_id, "202").inc()
     return {"task_id": task.id, "status": "queued"}
+
+
+@app.post("/v1/intervene")
+def intervene(req: InterventionRequest, claims: Dict = Depends(get_claims)) -> Dict[str, str]:
+    org_id = claims["org_id"]
+    HUMAN_INTERVENTIONS.labels(tenant=org_id, reason=req.reason).inc()
+    return {"status": "registered", "reason": req.reason}
 
 
 @app.get("/v1/tasks/{task_id}")

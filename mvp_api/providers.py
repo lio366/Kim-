@@ -19,22 +19,28 @@ def _call_primary(payload: Dict) -> Dict:
 
     time.sleep(latency / 1000)
     text = payload.get("text", "")
-    return {"provider": "primary", "output": text.upper(), "latency_ms": latency}
+    return {"output": text.upper(), "latency_ms": latency}
 
 
 def _call_backup(payload: Dict) -> Dict:
     latency = settings.backup_latency_ms
     time.sleep(latency / 1000)
     text = payload.get("text", "")
-    return {"provider": "backup", "output": text[::-1], "latency_ms": latency}
+    return {"output": text[::-1], "latency_ms": latency}
+
+
+PROVIDERS = {
+    "primary": _call_primary,
+    "backup": _call_backup,
+}
 
 
 def execute_with_failover(payload: Dict) -> Dict:
     try:
         result = _call_primary(payload)
-        return {**result, "used_fallback": False}
+        return {**result, "provider": "primary", "used_fallback": False}
     except TimeoutError:
         backup = _call_backup(payload)
-        return {**backup, "used_fallback": True}
+        return {**backup, "provider": "backup", "used_fallback": True}
     except Exception as exc:
         raise ProviderError(str(exc)) from exc

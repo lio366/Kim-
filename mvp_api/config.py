@@ -19,6 +19,12 @@ class Settings:
     primary_latency_ms = int(os.getenv("PRIMARY_LATENCY_MS", "120"))
     backup_latency_ms = int(os.getenv("BACKUP_LATENCY_MS", "220"))
     force_primary_failure = os.getenv("FORCE_PRIMARY_FAILURE", "false").lower() == "true"
+    kill_switch_enabled = os.getenv("KILL_SWITCH_ENABLED", "false").lower() == "true"
+    max_budget_per_day = float(os.getenv("MAX_BUDGET_PER_DAY", "25.0"))
+    cost_per_1k_chars = float(os.getenv("COST_PER_1K_CHARS", "0.02"))
+    global_circuit_error_threshold = int(os.getenv("GLOBAL_CIRCUIT_ERROR_THRESHOLD", "10"))
+    global_circuit_window_seconds = int(os.getenv("GLOBAL_CIRCUIT_WINDOW_SECONDS", "60"))
+    global_circuit_cooldown_seconds = int(os.getenv("GLOBAL_CIRCUIT_COOLDOWN_SECONDS", "30"))
 
 
 settings = Settings()
