@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise-workers
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: enterprise-workers
+  template:
+    metadata:
+      labels:
+        app: enterprise-workers
+    spec:
+      containers:
+        - name: worker
+          image: enterprise-agent-saas:latest
+          command: ["celery", "-A", "app.tasks.worker.celery_app", "worker", "--loglevel=info"]

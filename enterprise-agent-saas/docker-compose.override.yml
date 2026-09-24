@@ -1,0 +1,9 @@
+services:
+  enterprise-api:
+    environment:
+      - RATE_LIMIT_PER_MINUTE=2000
+      - DEFAULT_DAILY_QUOTA=2000000
+  enterprise-worker:
+    environment:
+      - RATE_LIMIT_PER_MINUTE=2000
+      - DEFAULT_DAILY_QUOTA=2000000

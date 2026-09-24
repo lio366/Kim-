@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  enterprise-api:
+    build:
+      context: ..
+      dockerfile: enterprise-agent-saas/Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8100
+    ports:
+      - "8100:8100"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./enterprise_agent.db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - JWT_SECRET=${JWT_SECRET:-change-me-at-least-32-characters-long}
+    depends_on:
+      - redis
+  enterprise-worker:
+    build:
+      context: ..
+      dockerfile: enterprise-agent-saas/Dockerfile
+    command: celery -A app.tasks.worker.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./enterprise_agent.db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      - JWT_SECRET=${JWT_SECRET:-change-me-at-least-32-characters-long}
+    depends_on:
+      - redis
+  redis:
+    image: redis:7-alpine

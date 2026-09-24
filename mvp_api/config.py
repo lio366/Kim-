@@ -2,7 +2,7 @@ import os
 
 
 class Settings:
-    jwt_secret = os.getenv("JWT_SECRET", "change-me")
+    jwt_secret = os.getenv("JWT_SECRET", "change-me-at-least-32-characters-long")
     jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
     jwt_exp_minutes = int(os.getenv("JWT_EXP_MINUTES", "60"))
 

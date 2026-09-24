@@ -11,7 +11,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - JWT_SECRET=${JWT_SECRET:-change-me-at-least-32-characters-long}
       - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-120}
       - DEFAULT_DAILY_QUOTA=${DEFAULT_DAILY_QUOTA:-5000}
       - PRIMARY_TIMEOUT_MS=${PRIMARY_TIMEOUT_MS:-800}
@@ -37,7 +37,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - JWT_SECRET=${JWT_SECRET:-change-me-at-least-32-characters-long}
       - PRIMARY_TIMEOUT_MS=${PRIMARY_TIMEOUT_MS:-800}
       - PRIMARY_LATENCY_MS=${PRIMARY_LATENCY_MS:-120}
       - BACKUP_LATENCY_MS=${BACKUP_LATENCY_MS:-220}

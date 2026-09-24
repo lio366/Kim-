@@ -1,0 +1,8 @@
+[project]
+name = "enterprise-agent-saas"
+version = "0.1.0"
+description = "Enterprise autonomous agent façade over KIMI MVP runtime"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
