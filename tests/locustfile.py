@@ -11,7 +11,7 @@ class KimiUser(HttpUser):
             name="auth_token",
         )
         token = response.json()["access_token"]
-        self.headers = {"Authorization": f"******"}
+        self.headers = {"Authorization": "Bearer " + token}
 
     @task(3)
     def process_sync(self):
