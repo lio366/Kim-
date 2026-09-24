@@ -7,6 +7,7 @@ Autonomía: 99%
 import asyncio
 from typing import Dict, Any, List
 from datetime import datetime
+from memoria_compartida import Experiencia
 
 class OptimizerAgente:
     """
