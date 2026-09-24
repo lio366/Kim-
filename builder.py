@@ -112,6 +112,7 @@ def test_endpoint():
     async def _generar_documentacion(self, codigo: str, 
                                      oportunidad: Dict) -> str:
         """Generar documentación automática"""
+        ejemplo_json = '{"input": "tu texto aquí"}'
         return f"""
 # API {oportunidad['industria'].title()}
 
@@ -124,7 +125,7 @@ import requests
 
 response = requests.post(
     "https://api-luz.up.railway.app/api/v1/{oportunidad['industria']}/procesar",
-    json=dict(input="tu texto aquí")
+    json={ejemplo_json}
 )
 ```
 
