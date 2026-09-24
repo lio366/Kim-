@@ -7,6 +7,7 @@ Autonomía: 99%
 import asyncio
 from typing import Dict, Any
 from datetime import datetime
+from memoria_compartida import Experiencia
 
 class BuilderAgente:
     """
@@ -123,7 +124,7 @@ import requests
 
 response = requests.post(
     "https://api-luz.up.railway.app/api/v1/{oportunidad['industria']}/procesar",
-    json={"input": "tu texto aquí"}
+    json={{"input": "tu texto aquí"}}
 )
 ```
 
