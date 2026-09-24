@@ -27,4 +27,8 @@ def test_builder_and_optimizer_store_experiences():
         assert result["mejoras_aplicadas"] == 1
         assert len(memoria.experiencias) == 2
 
-    asyncio.run(run_flow())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(run_flow())
+    finally:
+        loop.close()

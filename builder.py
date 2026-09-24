@@ -124,7 +124,7 @@ import requests
 
 response = requests.post(
     "https://api-luz.up.railway.app/api/v1/{oportunidad['industria']}/procesar",
-    json={{"input": "tu texto aquí"}}
+    json=dict(input="tu texto aquí")
 )
 ```
 
